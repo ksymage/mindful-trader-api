@@ -3,38 +3,40 @@ import requests
 
 app = FastAPI()
 
-BINANCE_API_URL = "https://api.binance.com/api/v3"
+COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
 
 @app.get("/price")
-def get_price(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 1):
-    endpoint = f"{BINANCE_API_URL}/klines"
+def get_price(symbol: str = "bitcoin", currency: str = "usd"):
+    endpoint = f"{COINGECKO_API_URL}/simple/price"
     params = {
-        "symbol": symbol.upper(),
-        "interval": interval,
-        "limit": limit
+        "ids": symbol.lower(),
+        "vs_currencies": currency.lower()
     }
+
     response = requests.get(endpoint, params=params)
 
     if response.status_code != 200:
         return {
-            "error": f"Binance API error: {response.status_code}",
+            "error": f"CoinGecko API error: {response.status_code}",
             "details": response.text
         }
 
     try:
-        data = response.json()[0]
+        data = response.json()
     except Exception as e:
         return {
             "error": "Failed to parse response",
             "message": str(e)
         }
 
+    if symbol.lower() not in data:
+        return {
+            "error": "Symbol not found",
+            "requested_symbol": symbol
+        }
+
     return {
-        "symbol": symbol.upper(),
-        "open_time": data[0],
-        "open": data[1],
-        "high": data[2],
-        "low": data[3],
-        "close": data[4],
-        "volume": data[5]
+        "symbol": symbol.lower(),
+        "currency": currency.lower(),
+        "price": data[symbol.lower()][currency.lower()]
     }
